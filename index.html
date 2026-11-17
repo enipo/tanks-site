@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tankeretank — top-down tankspel, blauw tegen rood</title>
+<meta name="description" content="Tankeretank is een top-down tankspel voor thuis, blauw tegen rood. De spelserver staat voorlopig uit.">
+<meta property="og:title" content="Tankeretank">
+<meta property="og:description" content="Top-down tankspel. Blauw tegen rood, online of tegen bots.">
+<meta property="og:image" content="media/hero_poster.jpg">
+<meta name="theme-color" content="#1b1510">
+<link rel="icon" href="media/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mud0: #110d09; --mud1: #1a1510; --mud2: #231c15; --mud3: #30271d; --mud4: #3e3226;
+    --bone: #efe6d2; --khaki: #b9ab8e; --dim: #7f7462; --line: rgba(239,230,210,.12);
+    --brass: #e8a33a; --brass2: #ffc466; --blue: #4f9dff; --red: #ff5b3f; --green: #5ee08a;
+    --cut: 6vw;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--mud1); color: var(--bone); font: 16.5px/1.62 Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: inherit; }
+  img, video { display: block; max-width: 100%; }
+  ::selection { background: var(--brass); color: #1a1100; }
+  .wrap { width: min(1240px, 90vw); margin: 0 auto; position: relative; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .disp { font-family: "Big Shoulders Display", Impact, sans-serif; text-transform: uppercase; }
+  .serif { font-family: "Instrument Serif", Georgia, serif; font-style: italic; text-transform: none; letter-spacing: 0; }
+
+  /* Korrel over de hele pagina */
+  body::after { content: ""; position: fixed; inset: -50%; z-index: 90; pointer-events: none; opacity: .09; animation: grain 1.2s steps(6) infinite;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+  @keyframes grain { 0%{transform:translate(0,0)} 20%{transform:translate(-3%,2%)} 40%{transform:translate(2%,-3%)} 60%{transform:translate(-2%,-1%)} 80%{transform:translate(3%,3%)} 100%{transform:translate(0,0)} }
+
+  /* ── Knoppen ── */
+  .btn { position: relative; display: inline-flex; align-items: center; gap: 12px; padding: 17px 30px 16px; font: 800 19px "Big Shoulders Display"; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; cursor: pointer; border: 0; overflow: hidden; white-space: nowrap;
+    clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); transition: transform .2s, filter .2s; }
+  .btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.45) 50%, transparent 65%); transform: translateX(-120%); transition: transform .6s; }
+  .btn:hover { transform: translateY(-2px); } .btn:hover::after { transform: translateX(120%); }
+  .btn-brass { background: linear-gradient(180deg, var(--brass2), var(--brass)); color: #1b1100; }
+  .btn-line { background: rgba(17,13,9,.5); color: var(--bone); clip-path: none; border: 2px solid rgba(239,230,210,.4); border-left: 4px solid var(--brass); padding: 15px 28px 14px; backdrop-filter: blur(6px); }
+  .btn-line:hover { border-color: rgba(239,230,210,.75); border-left-color: var(--brass2); }
+  .btn svg { width: 20px; height: 20px; flex: none; }
+
+  /* ── Navigatie ── */
+  nav { position: fixed; inset: 0 0 auto; z-index: 50; transition: background .35s, transform .35s; }
+  nav.solid { background: rgba(17,13,9,.9); backdrop-filter: blur(12px); box-shadow: 0 1px 0 var(--line); }
+  nav .wrap { display: flex; align-items: center; gap: 30px; height: 76px; }
+  .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; font: 900 26px "Big Shoulders Display"; letter-spacing: .16em; }
+  .logo .mark { width: 34px; height: 34px; background: var(--brass); clip-path: polygon(20% 0, 80% 0, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0 80%, 0 20%); display: grid; place-items: center; }
+  .logo .mark i { width: 16px; height: 16px; border: 3px solid var(--mud1); border-radius: 50%; position: relative; }
+  .logo .mark i::after { content: ""; position: absolute; left: 11px; top: 3px; width: 12px; height: 4px; background: var(--mud1); }
+  nav .links { display: flex; gap: 28px; margin-left: auto; font: 600 13px "IBM Plex Mono"; letter-spacing: .1em; text-transform: uppercase; }
+  nav .links a { text-decoration: none; color: var(--khaki); position: relative; padding: 4px 0; }
+  nav .links a::after { content: ""; position: absolute; left: 0; right: 100%; bottom: 0; height: 2px; background: var(--brass); transition: right .25s; }
+  nav .links a:hover { color: var(--bone); } nav .links a:hover::after { right: 0; }
+  .lang { display: flex; font: 600 12.5px "IBM Plex Mono"; border: 1px solid rgba(239,230,210,.25); }
+  .lang button { background: none; border: 0; color: var(--dim); padding: 6px 9px; cursor: pointer; font: inherit; letter-spacing: .08em; }
+  .lang button.on { background: var(--bone); color: var(--mud1); }
+  nav .btn { padding: 11px 18px 10px; font-size: 16px; }
+  .acct { font: 600 13px "IBM Plex Mono"; letter-spacing: .1em; text-transform: uppercase; color: var(--bone); text-decoration: none; padding: 6px 0; border-bottom: 2px solid var(--brass); }
+  @media (max-width: 980px) { nav .links { display: none; } .lang { margin-left: auto; } }
+  @media (max-width: 560px) { nav .btn { display: none; } }
+
+  /* ── Hero ── */
+  .hero { position: relative; min-height: min(100svh, 1050px); display: flex; align-items: center; overflow: hidden; background: var(--mud0);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), 0 100%); padding-bottom: var(--cut); }
+  .hero video, .hero .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.06); }
+  .hero .tint { position: absolute; inset: 0; background:
+      linear-gradient(90deg, rgba(17,13,9,.94) 0%, rgba(17,13,9,.78) 36%, rgba(17,13,9,.28) 68%, rgba(17,13,9,.5) 100%),
+      linear-gradient(0deg, rgba(17,13,9,.9) 0%, transparent 40%),
+      linear-gradient(180deg, rgba(17,13,9,.75) 0%, transparent 22%);
+    }
+  .hero .sepia { position: absolute; inset: 0; background: #5a3a14; mix-blend-mode: color; opacity: .38; }
+  .hero .scan { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); opacity: .35; }
+  .hero .wrap { z-index: 2; padding: 140px 0 60px; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 12px; font: 600 12.5px "IBM Plex Mono"; letter-spacing: .18em; text-transform: uppercase; color: var(--brass); }
+  .eyebrow::before { content: ""; width: 38px; height: 2px; background: var(--brass); }
+  .hero h1 { margin: 22px 0 0; font: 900 clamp(76px, 12.4vw, 196px)/.8 "Big Shoulders Display"; letter-spacing: -.005em; text-transform: uppercase; }
+  .hero h1 .l { display: block; overflow: hidden; }
+  .hero h1 .l > span { display: inline-block; transform: translateY(105%); animation: rise .9s cubic-bezier(.2,.8,.2,1) forwards; }
+  .hero h1 .l:nth-child(2) > span { animation-delay: .1s; } .hero h1 .l:nth-child(3) > span { animation-delay: .2s; }
+  @keyframes rise { to { transform: none; } }
+  .hero h1 .b { color: transparent; -webkit-text-stroke: 2px var(--blue); text-shadow: 0 0 40px rgba(79,157,255,.35); }
+  .hero h1 .r { color: var(--red); text-shadow: 0 0 50px rgba(255,91,63,.35); }
+  .hero .sub { font: italic 400 clamp(26px, 2.8vw, 40px)/1.1 "Instrument Serif"; color: var(--khaki); margin: 18px 0 18px; }
+  .hero .lead { max-width: 470px; color: #d8ceb8; font-size: 17.5px; margin: 0 0 34px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 14px; }
+  .hero .facts { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 30px; font: 500 12.5px "IBM Plex Mono"; letter-spacing: .08em; color: var(--khaki); text-transform: uppercase; }
+  .hero .facts span::before { content: "■ "; color: var(--brass); font-size: 9px; vertical-align: 2px; }
+  .hero .corner { position: absolute; z-index: 3; right: 5vw; bottom: calc(var(--cut) + 34px); text-align: right; font: 500 12px "IBM Plex Mono"; letter-spacing: .1em; color: var(--khaki); text-transform: uppercase; }
+  .status { display: inline-flex; align-items: center; gap: 9px; padding: 7px 12px; background: rgba(17,13,9,.7); border: 1px solid var(--line); margin-bottom: 10px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
+  .dot.on { background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.8s infinite; } .dot.off { background: var(--red); }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .scroll { position: absolute; z-index: 3; left: 50%; bottom: calc(var(--cut) + 10px); width: 1px; height: 60px; background: linear-gradient(var(--brass), transparent); animation: drop 2s infinite; }
+  @keyframes drop { 0% { transform: scaleY(0); transform-origin: top; } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
+  @media (max-width: 760px) { .hero .corner { display: none; } }
+
+  /* ── Lopende band ── */
+  .band { position: relative; z-index: 5; margin: calc(-1 * var(--cut) - 10px) 0 0; height: 150px; }
+  .band .row { position: absolute; left: -5%; right: -5%; overflow: hidden; white-space: nowrap; padding: 16px 0; }
+  .band .row.a { top: 40px; background: var(--brass); color: #1b1100; transform: rotate(-2.2deg); box-shadow: 0 16px 30px rgba(0,0,0,.35); }
+  .band .row.b { top: 50px; background: var(--mud3); color: var(--khaki); transform: rotate(1.6deg); }
+  .band .track { display: inline-flex; gap: 38px; padding-right: 38px; font: 900 34px/1 "Big Shoulders Display"; letter-spacing: .06em; text-transform: uppercase; animation: marquee 32s linear infinite; }
+  .band .row.b .track { animation-direction: reverse; animation-duration: 44s; font-size: 26px; }
+  .band .track i { font-style: normal; opacity: .55; }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+
+  section { position: relative; padding: 120px 0; }
+  h2 { margin: 16px 0 18px; font: 900 clamp(52px, 7vw, 104px)/.86 "Big Shoulders Display"; text-transform: uppercase; }
+  h2 .serif { font-size: .52em; color: var(--khaki); display: block; margin-top: 12px; }
+  .intro { max-width: 600px; color: var(--khaki); font-size: 18px; margin: 0 0 56px; }
+
+  /* ── Cijfers ── */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .stats > div { padding: 34px 26px 30px; border-right: 1px solid var(--line); }
+  .stats > div:last-child { border-right: 0; }
+  .stats b { display: block; font: 900 clamp(64px, 7.6vw, 112px)/.85 "Big Shoulders Display"; color: var(--bone); }
+  .stats b small { font-size: .42em; color: var(--brass); margin-left: 4px; }
+  .stats .lbl { display: block; margin-top: 12px; font: 600 12.5px "IBM Plex Mono"; letter-spacing: .12em; text-transform: uppercase; color: var(--khaki); }
+  @media (max-width: 860px) { .stats { grid-template-columns: 1fr 1fr; } .stats > div:nth-child(2) { border-right: 0; } .stats > div:nth-child(-n+2) { border-bottom: 1px solid var(--line); } }
+
+  /* ── Voertuig (koepel volgt de muis) ── */
+  .vehicle { background: var(--mud2) url(media/dirt.jpg) center / 560px; clip-path: polygon(0 var(--cut), 100% 0, 100% calc(100% - var(--cut)), 0 100%); padding: calc(120px + var(--cut)) 0; }
+  .vehicle::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 66% 50%, rgba(26,21,16,.2), rgba(26,21,16,.88) 62%), linear-gradient(90deg, rgba(26,21,16,.95), transparent 55%); }
+  .vehicle .wrap { display: grid; grid-template-columns: .9fr 1.1fr; gap: 30px; align-items: center; }
+  .tank { position: relative; aspect-ratio: 1; width: 100%; max-width: 640px; margin-left: auto; }
+  .tank img { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .35s; }
+  .tank .hull { filter: drop-shadow(26px 30px 22px rgba(0,0,0,.55)); transform: rotate(-24deg); }
+  .tank .tur { transform: rotate(var(--aim, -60deg)); filter: drop-shadow(10px 14px 10px rgba(0,0,0,.45)); }
+  .tank .glow { position: absolute; inset: 18%; border-radius: 50%; background: radial-gradient(circle, rgba(79,157,255,.32), transparent 65%); transition: background .35s; }
+  .tank.red .glow { background: radial-gradient(circle, rgba(255,91,63,.32), transparent 65%); }
+  .spec { position: absolute; font: 600 12px "IBM Plex Mono"; letter-spacing: .08em; text-transform: uppercase; color: var(--bone); background: rgba(17,13,9,.82); padding: 6px 10px; border-left: 3px solid var(--brass); white-space: nowrap; }
+  .teamsw { display: inline-flex; margin-top: 28px; border: 1px solid var(--line); }
+  .teamsw button { font: 800 16px "Big Shoulders Display"; letter-spacing: .14em; text-transform: uppercase; padding: 11px 20px; background: none; border: 0; color: var(--dim); cursor: pointer; }
+  .teamsw button.on[data-t="blue"] { background: var(--blue); color: #06142a; }
+  .teamsw button.on[data-t="red"] { background: var(--red); color: #2a0a04; }
+  .hint { margin-top: 16px; font: 500 12.5px "IBM Plex Mono"; color: var(--dim); letter-spacing: .06em; }
+  @media (max-width: 860px) { .vehicle .wrap { grid-template-columns: 1fr; } .spec { display: none; } }
+
+  /* ── Onderdelen ── */
+  .feat { display: grid; grid-template-columns: 1fr 1fr; gap: 70px; align-items: center; padding: 60px 0; }
+  .feat + .feat { border-top: 1px solid var(--line); }
+  .feat.flip .media { order: 2; }
+  .feat .media { position: relative; clip-path: polygon(0 0, 100% 0, 100% 86%, 88% 100%, 0 100%); aspect-ratio: 16/10; overflow: hidden; background: #000; }
+  .feat.flip .media { clip-path: polygon(0 0, 100% 0, 100% 100%, 12% 100%, 0 86%); }
+  .feat .media img, .feat .media video { width: 100%; height: 100%; object-fit: cover; transform: scale(1.04); transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
+  .feat:hover .media img, .feat:hover .media video { transform: scale(1.1); }
+  .feat .media .tag { position: absolute; left: 14px; top: 14px; font: 600 11px "IBM Plex Mono"; letter-spacing: .1em; text-transform: uppercase; background: rgba(17,13,9,.75); padding: 4px 9px; }
+  .feat .num { font: 900 150px/.8 "Big Shoulders Display"; color: transparent; -webkit-text-stroke: 1.5px rgba(232,163,58,.55); }
+  .feat h3 { margin: 10px 0 14px; font: 900 56px/.9 "Big Shoulders Display"; text-transform: uppercase; }
+  .feat p { margin: 0; color: var(--khaki); font-size: 17.5px; max-width: 470px; }
+  .feat ul { list-style: none; margin: 22px 0 0; padding: 0; font: 500 13.5px "IBM Plex Mono"; color: var(--bone); }
+  .feat li { padding: 9px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; }
+  .feat li span { color: var(--dim); }
+  @media (max-width: 860px) { .feat { grid-template-columns: 1fr; gap: 30px; } .feat.flip .media { order: 0; } .feat .num { font-size: 100px; } }
+
+  .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 60px; background: var(--line); }
+  .mini > div { background: var(--mud1); padding: 30px 28px; }
+  .mini b { font: 800 26px "Big Shoulders Display"; text-transform: uppercase; letter-spacing: .03em; }
+  .mini p { margin: 8px 0 0; color: var(--khaki); font-size: 15.5px; }
+  .mini .k { font: 600 11.5px "IBM Plex Mono"; color: var(--brass); letter-spacing: .14em; text-transform: uppercase; display: block; margin-bottom: 10px; }
+  @media (max-width: 860px) { .mini { grid-template-columns: 1fr; } }
+
+  /* ── Power-ups ── */
+  .power { background: var(--mud0); clip-path: polygon(0 var(--cut), 100% 0, 100% 100%, 0 100%); padding-top: calc(120px + var(--cut)); }
+  .pus { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 50px; }
+  .pu { position: relative; padding: 34px 26px 28px; background: linear-gradient(180deg, var(--mud2), var(--mud1)); border: 1px solid var(--line); overflow: hidden; transition: transform .3s, border-color .3s; }
+  .pu:hover { transform: translateY(-6px); border-color: var(--c); }
+  .pu .ring { position: relative; width: 120px; height: 120px; margin-bottom: 24px; }
+  .pu .ring::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 2px dashed var(--c); opacity: .55; animation: spin 14s linear infinite; }
+  .pu .ring::after { content: ""; position: absolute; inset: -30px; border-radius: 50%; background: radial-gradient(circle, var(--c), transparent 65%); opacity: .28; }
+  .pu img { position: relative; z-index: 1; width: 100%; filter: drop-shadow(0 10px 14px rgba(0,0,0,.5)); animation: bob 3.4s ease-in-out infinite; }
+  .pu:nth-child(2) img { animation-delay: -.8s; } .pu:nth-child(3) img { animation-delay: -1.6s; } .pu:nth-child(4) img { animation-delay: -2.4s; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes bob { 50% { transform: translateY(-7px); } }
+  .pu b { display: block; font: 900 34px/.95 "Big Shoulders Display"; text-transform: uppercase; }
+  .pu .v { display: block; margin-top: 8px; font: 600 13px "IBM Plex Mono"; color: var(--c); letter-spacing: .06em; }
+  .pu p { margin: 10px 0 0; color: var(--khaki); font-size: 14.5px; }
+  .note { margin-top: 22px; font: 500 12.5px "IBM Plex Mono"; color: var(--dim); }
+  @media (max-width: 960px) { .pus { grid-template-columns: 1fr 1fr; } }
+
+  /* ── Kaarten ── */
+  .maps { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 14px; height: 520px; margin-top: 50px; }
+  .map { position: relative; overflow: hidden; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 26px), calc(100% - 26px) 100%, 0 100%); }
+  .map img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1s cubic-bezier(.2,.8,.2,1), filter .5s; }
+  .map:hover img { transform: scale(1.08); }
+  .map.concept img { filter: grayscale(.55) sepia(.3) brightness(.62); }
+  .map.concept:hover img { filter: grayscale(.2) sepia(.15) brightness(.8); }
+  .map .cap { position: absolute; inset: auto 0 0; padding: 90px 22px 22px; background: linear-gradient(0deg, rgba(17,13,9,.95), transparent); }
+  .map h3 { margin: 6px 0 2px; font: 900 38px/.9 "Big Shoulders Display"; text-transform: uppercase; }
+  .map p { margin: 0; font: 500 12px "IBM Plex Mono"; color: var(--khaki); letter-spacing: .04em; }
+  .badge { display: inline-block; font: 700 11.5px "IBM Plex Mono"; letter-spacing: .14em; text-transform: uppercase; padding: 3px 9px; }
+  .badge.now { background: var(--green); color: #04220f; }
+  .badge.concept { background: rgba(239,230,210,.16); color: var(--bone); }
+  @media (max-width: 960px) { .maps { grid-template-columns: 1fr 1fr; height: auto; } .map { height: 280px; } }
+
+  /* ── Planning ── */
+  .timeline { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 26px; padding-top: 44px; }
+  .timeline::before { content: ""; position: absolute; left: 0; right: 0; top: 13px; height: 2px; background: var(--line); }
+  .timeline::after { content: ""; position: absolute; left: 0; width: 12.5%; top: 13px; height: 2px; background: var(--brass); box-shadow: 0 0 14px var(--brass); }
+  .step { position: relative; }
+  .step::before { content: ""; position: absolute; top: -38px; left: 0; width: 14px; height: 14px; background: var(--mud3); border: 2px solid var(--dim); transform: rotate(45deg); }
+  .step.now::before { background: var(--brass); border-color: var(--brass2); box-shadow: 0 0 16px var(--brass); }
+  .step b { font: 800 14px "IBM Plex Mono"; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+  .step.now b { color: var(--brass); }
+  .step h3 { margin: 6px 0 8px; font: 900 30px/.95 "Big Shoulders Display"; text-transform: uppercase; }
+  .step p { margin: 0; color: var(--khaki); font-size: 15px; }
+  @media (max-width: 860px) { .timeline { grid-template-columns: 1fr 1fr; row-gap: 60px; } .timeline::before, .timeline::after { display: none; } }
+
+  /* ── Downloaden ── */
+  .dl { background: var(--mud2) url(media/still_boom.jpg) center / cover; clip-path: polygon(0 var(--cut), 100% 0, 100% 100%, 0 100%); padding-top: calc(130px + var(--cut)); }
+  .dl::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(26,21,16,.8), rgba(26,21,16,.96) 45%); }
+  .plats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .plat { position: relative; display: flex; flex-direction: column; padding: 32px 30px 30px; background: rgba(17,13,9,.82); border: 1px solid var(--line); border-top: 3px solid var(--brass); backdrop-filter: blur(6px); }
+  .plat.exp { border-top-color: var(--dim); }
+  .plat.wide { grid-column: 1 / -1; }
+  .plat h3 { margin: 0; font: 900 44px/.9 "Big Shoulders Display"; text-transform: uppercase; }
+  .plat .st { display: inline-block; margin: 12px 0 4px; font: 700 11.5px "IBM Plex Mono"; letter-spacing: .14em; text-transform: uppercase; color: var(--green); }
+  .plat.exp .st { color: var(--brass); }
+  .plat .req { color: var(--khaki); font-size: 14.5px; margin: 0 0 20px; }
+  .plat ol { margin: 0 0 26px; padding-left: 20px; color: #d6ccb6; font-size: 15px; }
+  .plat li { margin: 7px 0; }
+  .plat .btn { margin-top: auto; justify-content: center; }
+  .qr { display: flex; gap: 14px; align-items: center; margin: 0 0 20px; }
+  .qr img { width: 84px; height: 84px; background: #fff; padding: 5px; }
+  .qr span { font: 500 12.5px "IBM Plex Mono"; color: var(--khaki); }
+  code { font: 500 13px "IBM Plex Mono"; color: var(--brass2); background: rgba(232,163,58,.12); padding: 1px 6px; }
+  .ios { margin-top: 18px; padding: 16px 20px; border: 1px dashed rgba(239,230,210,.2); font-size: 14.5px; color: var(--khaki); background: rgba(17,13,9,.5); }
+  @media (max-width: 960px) { .plats { grid-template-columns: 1fr; } }
+
+  /* ── Besturing ── */
+  .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--line); }
+  .ctl { background: var(--mud1); padding: 30px; }
+  .ctl h3 { margin: 0 0 16px; font: 900 28px "Big Shoulders Display"; text-transform: uppercase; color: var(--brass); }
+  .ctl dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 11px 18px; align-items: center; font-size: 15px; }
+  .ctl dt { font-weight: 600; white-space: nowrap; } .ctl dd { margin: 0; color: var(--khaki); }
+  kbd { display: inline-block; min-width: 26px; text-align: center; padding: 2px 7px; margin-right: 2px; background: var(--mud3); border: 1px solid #54473a; border-bottom-width: 3px; font: 600 12.5px "IBM Plex Mono"; color: var(--bone); }
+  @media (max-width: 860px) { .controls { grid-template-columns: 1fr; } }
+
+  footer { position: relative; padding: 90px 0 40px; overflow: hidden; border-top: 1px solid var(--line); }
+  footer .big { font: 900 clamp(80px, 19vw, 300px)/.8 "Big Shoulders Display"; text-transform: uppercase; color: transparent; -webkit-text-stroke: 1.5px rgba(239,230,210,.14); white-space: nowrap; margin: 0 0 40px -.04em; }
+  footer .row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; font: 500 12.5px "IBM Plex Mono"; color: var(--dim); letter-spacing: .04em; }
+
+  /* ── Beweging ── */
+  .rv { opacity: 0; transform: translateY(40px); transition: opacity .9s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1); }
+  .rv.in { opacity: 1; transform: none; }
+  .rv-x { opacity: 0; transform: translateX(-50px); transition: opacity 1s, transform 1s cubic-bezier(.2,.8,.2,1); }
+  .rv-x.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .rv, .rv-x { opacity: 1; transform: none; } .hero h1 .l > span { transform: none; animation: none; }
+    .band .track, body::after, .pu img, .pu .ring::before { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="nav"><div class="wrap">
+  <a class="logo" href="#top"><span class="mark"><i></i></span>TANKERETANK</a>
+  <div class="links">
+    <a href="#voertuig">Het voertuig</a>
+    <a href="#spel">Het spel</a>
+    <a href="#kaarten">Kaarten</a>
+    <a href="#planning">Planning</a>
+  </div>
+  <div class="lang"><button data-l="nl">NL</button><button data-l="en">EN</button></div>
+</div></nav>
+
+<header class="hero" id="top">
+  <img class="poster" src="media/hero_poster.jpg" alt="">
+  <video autoplay muted loop playsinline preload="auto" poster="media/hero_poster.jpg">
+    <source src="media/hero.webm" type="video/webm">
+    <source src="media/hero.mp4" type="video/mp4">
+  </video>
+  <div class="sepia"></div><div class="tint"></div><div class="scan"></div>
+  <div class="wrap" id="heroContent">
+    <span class="eyebrow">Top-down tankspel · in ontwikkeling</span>
+    <h1><span class="l"><span class="b">Blauw</span></span><span class="l"><span>tegen</span></span><span class="l"><span class="r">rood.</span></span></h1>
+    <p class="sub">Een tankspel voor thuis.</p>
+    <p class="lead">Rij, richt en schiet. Bomen, struiken en schuren gaan onderweg kapot.</p>
+    <div class="ctas">
+      <a class="btn btn-brass" href="#spel">Bekijk het spel</a>
+    </div>
+    <div class="facts"><span>Gratis</span><span>Geen advertenties</span><span id="build">In ontwikkeling</span></div>
+  </div>
+  <div class="corner"><div class="status"><span class="dot off" id="dot"></span><span id="status">Server controleren…</span></div><br><span class="vid">Beelden uit het spel</span></div>
+  <div class="scroll"></div>
+</header>
+
+<section style="padding-top:40px"><div class="wrap">
+  <div class="stats rv">
+    <div><b data-count="4">0</b><span class="lbl">Tanks per team, maximaal</span></div>
+    <div><b><span data-count="2">0</span><small>SEC</small></b><span class="lbl">Tot je weer in het veld staat</span></div>
+    <div><b data-count="14">0</b><span class="lbl">Power-ups op de kaart</span></div>
+    <div><b>0</b><span class="lbl">Advertenties</span></div>
+  </div>
+</div></section>
+
+<section class="vehicle" id="voertuig"><div class="wrap">
+  <div class="rv-x">
+    <span class="eyebrow">Het voertuig</span>
+    <h2>Richt waar<br>je wilt.<span class="serif">De koepel draait los van de romp.</span></h2>
+    <p class="intro" style="margin-bottom:0">Rij de ene kant op en schiet de andere kant op. Beweeg je muis over de tank om te richten.</p>
+    <div class="teamsw"><button data-t="blue" class="on">Team blauw</button><button data-t="red">Team rood</button></div>
+    <p class="hint">Art uit het spel</p>
+  </div>
+  <div class="tank" id="tank">
+    <div class="glow"></div>
+    <img class="hull" id="hull" src="media/hull_blue.png" alt="Tank uit het spel">
+    <img class="tur" id="tur" src="media/turret_blue.png" alt="">
+    <span class="spec" style="left:-2%;top:22%">100 levenspunten</span>
+    <span class="spec" style="right:0;top:70%">Herladen 0,6 s</span>
+    <span class="spec" style="left:10%;bottom:6%">Koepel draait los</span>
+  </div>
+</div></section>
+
+<section id="spel"><div class="wrap">
+  <span class="eyebrow rv">Het spel</span>
+  <h2 class="rv">Twee teams.<br>Eén kaart vol dekking.</h2>
+
+  <div class="feat">
+    <div class="media rv"><img src="media/still_fight.jpg" alt="" loading="lazy"><span class="tag">Schermafbeelding uit het spel</span></div>
+    <div class="rv">
+      <div class="num">01</div>
+      <h3>Online of tegen bots</h3>
+      <p>Verbind met de server en je zit in het lopende potje. Lege plekken worden opgevuld met bots. Offline oefenen kan ook.</p>
+      <ul><li>Teams <span>2 × max. 4 tanks</span></li><li>Bots <span>makkelijk · normaal · moeilijk</span></li><li>Terug in het veld <span>na 2 seconden</span></li></ul>
+    </div>
+  </div>
+
+  <div class="feat flip">
+    <div class="media rv"><img src="media/still_field.jpg" alt="" loading="lazy"><span class="tag">Schermafbeelding uit het spel</span></div>
+    <div class="rv">
+      <div class="num">02</div>
+      <h3>Omgeving die kapot kan</h3>
+      <p>Struiken en jonge bomen rij je plat. Grote bomen en boerderijen schiet je kapot. Rotsen blijven staan, dus daarachter kun je schuilen.</p>
+      <ul><li>Struiken, jonge bomen <span>platrijden</span></li><li>Grote bomen, boerderijen <span>kapotschieten</span></li><li>Rotsen <span>blijven staan</span></li></ul>
+    </div>
+  </div>
+
+  <div class="feat">
+    <div class="media rv"><video autoplay muted loop playsinline preload="none" poster="media/still_boom.jpg"><source src="media/action.mp4" type="video/mp4"></video><span class="tag">Beelden uit het spel</span></div>
+    <div class="rv">
+      <div class="num">03</div>
+      <h3>Zicht en dekking</h3>
+      <p>Je ziet alleen wat je team ziet. Onder bomen ben je lastiger te spotten, en wie schiet, is even van ver zichtbaar.</p>
+      <ul><li>Zicht <span>per team</span></li><li>Onder bomen <span>moeilijker te zien</span></li><li>Na vuren <span>even zichtbaar</span></li></ul>
+    </div>
+  </div>
+
+  <div class="mini">
+    <div class="rv"><span class="k">Effecten</span><b>Het mag knallen</b><p>Explosies met drukgolf en vonken, koepels die van een wrak vliegen, sporen en kraters die blijven liggen.</p></div>
+    <div class="rv"><span class="k">Besturing</span><b>Zoals jij wilt</b><p>Toetsenbord en muis, gamepad, of touch met twee duimsticks.</p></div>
+    <div class="rv"><span class="k">Landschap</span><b>Steeds anders</b><p>Het landschap wordt per server en per oefenpotje opnieuw gegenereerd.</p></div>
+  </div>
+</div></section>
+
+<section class="power"><div class="wrap">
+  <span class="eyebrow rv">Power-ups</span>
+  <h2 class="rv">Pak ze<br>voor de ander.</h2>
+  <div class="pus">
+    <div class="pu rv" style="--c:var(--green)"><div class="ring"><img src="media/pu_repair.png" alt=""></div><b>Reparatie</b><span class="v">+50 levenspunten</span></div>
+    <div class="pu rv" style="--c:#ffd84a"><div class="ring"><img src="media/pu_speed.png" alt=""></div><b>Snelheid</b><span class="v">50% sneller · 8 s</span></div>
+    <div class="pu rv" style="--c:var(--blue)"><div class="ring"><img src="media/pu_shield.png" alt=""></div><b>Schild</b><span class="v">Geen schade · 6 s</span></div>
+    <div class="pu rv" style="--c:var(--red)"><div class="ring"><img src="media/pu_damage.png" alt=""></div><b>Dubbele schade</b><span class="v">×2 · 8 s</span></div>
+  </div>
+  <p class="note rv">Power-ups liggen verspreid over de kaart. Na 14 seconden ligt er op dezelfde plek een nieuwe.</p>
+</div></section>
+
+<section id="kaarten" style="background:var(--mud0);padding-top:40px"><div class="wrap">
+  <span class="eyebrow rv">Kaarten</span>
+  <h2 class="rv">Eén speelbaar.<br>Drie in de maak.</h2>
+  <div class="maps">
+    <div class="map rv"><img src="media/still_field.jpg" alt="" loading="lazy"><div class="cap"><span class="badge now">Speelbaar</span><h3>Zomerplatteland</h3><p>Schermafbeelding uit het spel</p></div></div>
+    <div class="map concept rv"><img src="media/map2.jpg" alt="" loading="lazy"><div class="cap"><span class="badge concept">Concept</span><h3>Winter</h3><p>Conceptbeeld, nog niet in het spel</p></div></div>
+    <div class="map concept rv"><img src="media/map3.jpg" alt="" loading="lazy"><div class="cap"><span class="badge concept">Concept</span><h3>Woestijn</h3><p>Conceptbeeld, nog niet in het spel</p></div></div>
+    <div class="map concept rv"><img src="media/map4.jpg" alt="" loading="lazy"><div class="cap"><span class="badge concept">Concept</span><h3>Herfst</h3><p>Conceptbeeld, nog niet in het spel</p></div></div>
+  </div>
+</div></section>
+
+<section id="planning" style="background:var(--mud0)"><div class="wrap">
+  <span class="eyebrow rv">Planning</span>
+  <h2 class="rv">Waar we staan.</h2>
+  <p class="intro rv">Tankeretank is een hobbyproject en in ontwikkeling. Dit is de volgorde waarin er dingen bij komen.</p>
+  <div class="timeline rv">
+    <div class="step now"><b>Nu</b><h3>Speelbaar</h3><p>Eén kaart, online spelen, bots in drie niveaus, power-ups, geluid en muziek.</p></div>
+    <div class="step"><b>Hierna</b><h3>Wapens</h3><p>Extra wapens, rookgranaten, mijnen, airdrops en killstreaks.</p></div>
+    <div class="step"><b>Daarna</b><h3>Spelmodi</h3><p>Veroveringspunten, capture the flag, ieder voor zich.</p></div>
+    <div class="step"><b>Later</b><h3>Wereld</h3><p>Winter-, woestijn- en herfstkaarten. Voertuigen zoals buggy en helikopter.</p></div>
+  </div>
+</div></section>
+
+<section class="dl" id="spelen"><div class="wrap">
+  <span class="eyebrow rv">Status</span>
+  <h2 class="rv">Even stand-by.<span class="serif">De server staat uit.</span></h2>
+  <p class="intro rv">De spelserver, de accounts en de downloads staan voorlopig uit. Deze pagina blijft staan om te laten zien wat Tankeretank is.</p>
+</div></section>
+
+<section style="padding-top:90px"><div class="wrap">
+  <span class="eyebrow rv">Besturing</span>
+  <h2 class="rv">Zo speel je.</h2>
+  <div class="controls rv">
+    <div class="ctl"><h3>Toetsenbord &amp; muis</h3><dl>
+      <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Rijden</dd>
+      <dt>Muis</dt><dd>Richten</dd>
+      <dt>Klik of <kbd>Spatie</kbd></dt><dd>Vuren</dd>
+      <dt><kbd>Tab</kbd></dt><dd>Scorebord</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Terug naar het menu</dd></dl></div>
+    <div class="ctl"><h3>Gamepad</h3><dl>
+      <dt>Linkerstick</dt><dd>Rijden</dd>
+      <dt>Rechterstick</dt><dd>Richten</dd>
+      <dt>RT, RB of A</dt><dd>Vuren</dd>
+      <dt>Select</dt><dd>Scorebord</dd>
+      <dt>Start</dt><dd>Terug naar het menu</dd></dl></div>
+    <div class="ctl"><h3>Touch</h3><dl>
+      <dt>Linkerduim</dt><dd>Rijden. De stick verschijnt waar je tikt.</dd>
+      <dt>Rechterduim</dt><dd>Richten. Ver duwen is vuren.</dd></dl></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="big" aria-hidden="true">Tankeretank</div>
+  <div class="row"><p class="credits">Hobbyproject, gemaakt met Godot. De spelserver staat voorlopig uit. Beelden gemaakt met AI-beeldgeneratie; geluid CC0 (Kenney) en eigen synthese.</p><span>tanks.nerdy.nl</span></div>
+</div></footer>
+
+<script>
+  // ── Vertalingen ── Nederlands staat in de HTML; hier de Engelse tekst, op de genormaliseerde Nederlandse tekst.
+  const EN = {
+    'Bekijk het spel': 'See the game', 'Status': 'Status',
+    'Even stand-by.<span class="serif">De server staat uit.</span>': 'On standby.<span class="serif">The server is off.</span>',
+    'De spelserver, de accounts en de downloads staan voorlopig uit. Deze pagina blijft staan om te laten zien wat Tankeretank is.': 'The game server, the accounts and the downloads are switched off for now. This page stays up to show what Tankeretank is.',
+    'Inloggen': 'Log in', 'Account': 'Account', 'Online zonder account': 'Online, no account needed',
+    'Iedereen kan meteen spelen, online en tegen bots. Zonder account speel je als gast met een zelfgekozen naam. Een account (op uitnodiging) is voor wie wil: heb je een uitnodigingslink gekregen, open die dan om je account te maken. Heb je al een account? Log dan in het spel in met je e-mailadres.': 'Anyone can play right away, online and against bots. Without an account you play as a guest with a name of your choice. An account (by invite) is optional: got an invite link? Open it to create your account. Already have an account? Log in to the game with your email address.',
+    'Ingelogd. Download hieronder en log in de app in met hetzelfde e-mailadres.': 'Logged in. Download below, and log in to the app with the same email address.',
+    'Het voertuig': 'The vehicle', 'Het spel': 'The game', 'Kaarten': 'Maps', 'Planning': 'Roadmap', 'Installeren': 'Install', 'Ranglijst': 'Leaderboard', 'Speel gratis': 'Play free',
+    'Top-down tankspel · in ontwikkeling': 'Top-down tank game · in development',
+    'Blauw': 'Blue', 'tegen': 'versus', 'rood.': 'red.',
+    'Een tankspel voor thuis.': 'A tank game for home.',
+    'Rij, richt en schiet. Bomen, struiken en schuren gaan onderweg kapot.': 'Drive, aim and fire. Trees, bushes and barns get wrecked along the way.',
+    'Download voor Android': 'Download for Android',
+    'Gratis': 'Free', 'Geen account': 'No account', 'Geen advertenties': 'No ads',
+    'Beelden uit het spel': 'Footage from the game',
+    'Tanks per team, maximaal': 'Tanks per team, max', 'Tot je weer in het veld staat': 'Until you are back in the field', 'Power-ups op de kaart': 'Power-ups on the map', 'Advertenties': 'Ads',
+    'Richt waar<br>je wilt.<span class="serif">De koepel draait los van de romp.</span>': 'Aim wherever<br>you want.<span class="serif">The turret turns independently of the hull.</span>',
+    'Rij de ene kant op en schiet de andere kant op. Beweeg je muis over de tank om te richten.': 'Drive one way and fire the other. Move your mouse over the tank to aim.',
+    'Team blauw': 'Team blue', 'Team rood': 'Team red', 'Art uit het spel': 'Art from the game',
+    '100 levenspunten': '100 health', 'Herladen 0,6 s': 'Reload 0.6 s', 'Koepel draait los': 'Independent turret',
+    'Twee teams.<br>Eén kaart vol dekking.': 'Two teams.<br>One map full of cover.',
+    'Schermafbeelding uit het spel': 'Screenshot from the game',
+    'Online of tegen bots': 'Online or against bots',
+    'Verbind met de server en je zit in het lopende potje. Lege plekken worden opgevuld met bots. Offline oefenen kan ook.': 'Connect to the server and you join the match in progress. Empty slots are filled with bots. You can also practise offline.',
+    'Teams <span>2 × max. 4 tanks</span>': 'Teams <span>2 × max. 4 tanks</span>',
+    'Bots <span>makkelijk · normaal · moeilijk</span>': 'Bots <span>easy · normal · hard</span>',
+    'Terug in het veld <span>na 2 seconden</span>': 'Back in the field <span>after 2 seconds</span>',
+    'Omgeving die kapot kan': 'Destructible surroundings',
+    'Struiken en jonge bomen rij je plat. Grote bomen en boerderijen schiet je kapot. Rotsen blijven staan, dus daarachter kun je schuilen.': 'Drive over bushes and young trees. Shoot down big trees and farmhouses. Rocks stay put, so you can take cover behind them.',
+    'Struiken, jonge bomen <span>platrijden</span>': 'Bushes, young trees <span>drive over</span>',
+    'Grote bomen, boerderijen <span>kapotschieten</span>': 'Big trees, farmhouses <span>shoot down</span>',
+    'Rotsen <span>blijven staan</span>': 'Rocks <span>stay put</span>',
+    'Zicht en dekking': 'Sight and cover',
+    'Je ziet alleen wat je team ziet. Onder bomen ben je lastiger te spotten, en wie schiet, is even van ver zichtbaar.': 'You only see what your team sees. Under trees you are harder to spot, and firing makes you visible from afar for a moment.',
+    'Zicht <span>per team</span>': 'Sight <span>per team</span>', 'Onder bomen <span>moeilijker te zien</span>': 'Under trees <span>harder to spot</span>', 'Na vuren <span>even zichtbaar</span>': 'After firing <span>briefly visible</span>',
+    'Effecten': 'Effects', 'Het mag knallen': 'Things go bang',
+    'Explosies met drukgolf en vonken, koepels die van een wrak vliegen, sporen en kraters die blijven liggen.': 'Explosions with shockwaves and sparks, turrets flying off wrecks, tracks and craters that stay on the ground.',
+    'Besturing': 'Controls', 'Zoals jij wilt': 'Your way',
+    'Toetsenbord en muis, gamepad, of touch met twee duimsticks.': 'Keyboard and mouse, gamepad, or touch with two thumbsticks.',
+    'Landschap': 'Landscape', 'Steeds anders': 'Always different',
+    'Het landschap wordt per server en per oefenpotje opnieuw gegenereerd.': 'The landscape is generated anew for each server and each practice match.',
+    'Power-ups': 'Power-ups', 'Pak ze<br>voor de ander.': 'Grab them<br>before they do.',
+    'Reparatie': 'Repair', '+50 levenspunten': '+50 health', 'Snelheid': 'Speed', '50% sneller · 8 s': '50% faster · 8 s', 'Schild': 'Shield', 'Geen schade · 6 s': 'No damage · 6 s', 'Dubbele schade': 'Double damage',
+    'Power-ups liggen verspreid over de kaart. Na 14 seconden ligt er op dezelfde plek een nieuwe.': 'Power-ups are spread across the map. After 14 seconds a new one appears in the same spot.',
+    'Eén speelbaar.<br>Drie in de maak.': 'One playable.<br>Three in the works.',
+    'Speelbaar': 'Playable', 'Concept': 'Concept', 'Zomerplatteland': 'Summer countryside', 'Winter': 'Winter', 'Woestijn': 'Desert', 'Herfst': 'Autumn',
+    'Conceptbeeld, nog niet in het spel': 'Concept art, not in the game yet',
+    'Waar we staan.': 'Where we are.',
+    'Tankeretank is een hobbyproject en in ontwikkeling. Dit is de volgorde waarin er dingen bij komen.': 'Tankeretank is a hobby project in development. This is the order in which things are being added.',
+    'Nu': 'Now', 'Hierna': 'Next', 'Daarna': 'After that', 'Later': 'Later',
+    'Wapens': 'Weapons', 'Spelmodi': 'Game modes', 'Wereld': 'World',
+    'Eén kaart, online spelen, bots in drie niveaus, power-ups, geluid en muziek.': 'One map, online play, bots at three levels, power-ups, sound and music.',
+    'Extra wapens, rookgranaten, mijnen, airdrops en killstreaks.': 'Extra weapons, smoke grenades, mines, airdrops and killstreaks.',
+    'Veroveringspunten, capture the flag, ieder voor zich.': 'Capture points, capture the flag, free-for-all.',
+    'Winter-, woestijn- en herfstkaarten. Voertuigen zoals buggy en helikopter.': 'Winter, desert and autumn maps. Vehicles such as a buggy and a helicopter.',
+    'Stap in.<span class="serif">Kies je apparaat.</span>': 'Get in.<span class="serif">Choose your device.</span>',
+    'De server staat in de app al ingesteld. Vul je naam in en kies <b>Online spelen</b>, of <b>Oefenen tegen bots</b>.': 'The server is already set up in the app. Enter your name and choose <b>Online spelen</b> (play online) or <b>Oefenen tegen bots</b> (practise against bots). The app itself is in Dutch for now.',
+    'Beschikbaar': 'Available', 'Experimenteel': 'Experimental',
+    'Android 7 of nieuwer, 64-bit': 'Android 7 or newer, 64-bit',
+    'Scan met je telefoon om deze pagina daar te openen.': 'Scan with your phone to open this page there.',
+    'Download de app. Waarschuwt Chrome, kies dan <b>Toch downloaden</b>.': 'Download the app. If Chrome warns you, choose <b>Download anyway</b>.',
+    'Open het bestand en sta installeren uit onbekende bronnen toe.': 'Open the file and allow installing from unknown sources.',
+    'Nieuwe versies worden in het menu van de app aangeboden.': 'New versions are offered in the app menu.',
+    'Apple Silicon en Intel': 'Apple Silicon and Intel',
+    'Download en pak het zip-bestand uit.': 'Download and unzip the file.',
+    'Sleep <b>Tankeretank</b> naar je Apps-map.': 'Drag <b>Tankeretank</b> to your Applications folder.',
+    'De app is niet door Apple gesigneerd, dus macOS blokkeert hem de eerste keer. Klik op <b>Gereed</b>, ga naar <b>Systeeminstellingen → Privacy en beveiliging</b> en klik onderaan op <b>Toch openen</b>.': 'The app is not signed by Apple, so macOS blocks it the first time. Click <b>Done</b>, go to <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b> at the bottom.',
+    'Download voor Mac': 'Download for Mac', 'Download voor Windows': 'Download for Windows', 'Windows 10 of 11, 64-bit': 'Windows 10 or 11, 64-bit',
+    'Start <b>Tankeretank.exe</b>.': 'Run <b>Tankeretank.exe</b>.',
+    'De app is niet gesigneerd. Toont Windows een waarschuwing, kies dan <b>Meer info → Toch uitvoeren</b>.': 'The app is not signed. If Windows shows a warning, choose <b>More info → Run anyway</b>.',
+    'Pi 4 of 5 met 64-bit Raspberry Pi OS · nog niet op een echte Pi getest': 'Pi 4 or 5 with 64-bit Raspberry Pi OS · not yet tested on a real Pi',
+    'Download en pak uit: <code>tar xzf tankeretank-rpi.tar.gz</code>': 'Download and extract: <code>tar xzf tankeretank-rpi.tar.gz</code>',
+    'Start met <code>./tankeretank.arm64</code>': 'Run <code>./tankeretank.arm64</code>',
+    'Een gamepad werkt ook.': 'A gamepad works too.', 'Download voor Pi': 'Download for Pi',
+    '<b>iPhone en iPad:</b> nog geen app. Probeer de browserversie; die is op iPhone nog niet getest.': '<b>iPhone and iPad:</b> no app yet. Try the browser version; it has not been tested on iPhone yet.',
+    'Speel in je browser': 'Play in your browser', 'Nieuw': 'New',
+    'Chrome, Firefox, Edge of Safari · het best op een computer': 'Chrome, Firefox, Edge or Safari · best on a computer',
+    'Niets installeren: klik en speel.': 'Nothing to install: click and play.',
+    'De eerste keer laden duurt even; daarna gaat het snel.': 'The first load takes a moment; after that it is quick.',
+    'Online spelen kan direct als gast. Kreeg je een kamerlink? Open hem en je zit bij elkaar.': 'Play online right away as a guest. Got a room link? Open it and you are in the same game.',
+    'Zo speel je.': 'How to play.', 'Toetsenbord &amp; muis': 'Keyboard &amp; mouse',
+    'Rijden': 'Drive', 'Richten': 'Aim', 'Vuren': 'Fire', 'Scorebord': 'Scoreboard', 'Terug naar het menu': 'Back to the menu',
+    'Muis': 'Mouse', 'Klik of <kbd>Spatie</kbd>': 'Click or <kbd>Space</kbd>',
+    'Linkerstick': 'Left stick', 'Rechterstick': 'Right stick', 'RT, RB of A': 'RT, RB or A', 'Linkerduim': 'Left thumb', 'Rechterduim': 'Right thumb',
+    'Rijden. De stick verschijnt waar je tikt.': 'Drive. The stick appears where you touch.', 'Richten. Ver duwen is vuren.': 'Aim. Push far to fire.',
+    'Hobbyproject, gemaakt met Godot. De spelserver staat voorlopig uit. Beelden gemaakt met AI-beeldgeneratie; geluid CC0 (Kenney) en eigen synthese.': 'Hobby project, made with Godot. The game server is switched off for now. Images made with AI image generation; sound CC0 (Kenney) and our own synthesis.',
+  };
+  const TXT = {
+    nl: { title: 'Tankeretank — top-down tankspel, blauw tegen rood', desc: 'Tankeretank is een top-down tankspel voor thuis, blauw tegen rood. De spelserver staat voorlopig uit.',
+      checking: 'Server controleren…', on: 'Server online', off: 'Server staat uit', dev: 'In ontwikkeling', ver: 'versie van',
+      band: ['Blauw tegen rood', '4 tegen 4', 'Online of tegen bots', 'Gratis', 'Geen account', 'Geen advertenties'],
+      band2: ['Bomen om', 'Schuren plat', 'Rotsen blijven staan', 'Power-ups', 'Terug na 2 seconden'] },
+    en: { title: 'Tankeretank — top-down tank game, blue versus red', desc: 'Tankeretank is a top-down tank game for home, blue versus red. The game server is switched off for now.',
+      checking: 'Checking server…', on: 'Server online', off: 'Server is off', dev: 'In development', ver: 'version of',
+      band: ['Blue versus red', '4 versus 4', 'Online or against bots', 'Free', 'No account', 'No ads'],
+      band2: ['Trees down', 'Barns flattened', 'Rocks stay put', 'Power-ups', 'Back in 2 seconds'] },
+  };
+  const SEL = 'nav .links a, #acct, #dlIntro, .btn:not(:has(.t)), .btn .t, .eyebrow, .hero h1 .l > span, .hero .sub, .hero .lead, .hero .facts span:not(#build), .corner .vid, .stats .lbl, h2, .intro, .teamsw button, .hint, .spec, .feat .tag, .feat h3, .feat p, .feat li, .mini .k, .mini b, .mini p, .pu b, .pu .v, .note, .map h3, .map p, .badge, .step b, .step h3, .step p, .plat .st, .plat .req, .qr span, .plat li, .ios, .ctl h3, .ctl dt, .ctl dd, .credits';
+  const norm = s => s.replace(/\s+/g, ' ').trim();
+  const els = [...document.querySelectorAll(SEL)];
+  els.forEach(e => e.dataset.nl = e.innerHTML);
+  let lang = 'nl', serverOn = false, build = null;
+
+  function band(id, words) {
+    const html = words.map(w => `<span>${w}</span><i>✕</i>`).join('');
+    document.getElementById(id).innerHTML = html + html;
+  }
+  function render() {
+    const t = TXT[lang];
+    document.getElementById('status').textContent = serverOn === null ? t.checking : serverOn ? t.on : t.off;
+    document.getElementById('build').textContent = build ? `${t.dev} · ${t.ver} ${build}` : t.dev;
+  }
+  function setLang(l) {
+    lang = l === 'en' ? 'en' : 'nl';
+    document.documentElement.lang = lang;
+    for (const e of els) { const en = EN[norm(e.dataset.nl)]; e.innerHTML = lang === 'en' && en !== undefined ? en : e.dataset.nl; }
+    document.title = TXT[lang].title;
+    document.querySelector('meta[name=description]').content = TXT[lang].desc;
+    document.querySelectorAll('.lang button').forEach(b => b.classList.toggle('on', b.dataset.l === lang));
+    render();
+  }
+  document.querySelectorAll('.lang button').forEach(b => b.onclick = () => { localStorage.setItem('lang', b.dataset.l); setLang(b.dataset.l); });
+  setLang(new URLSearchParams(location.search).get('lang') || localStorage.getItem('lang') || ((navigator.language || 'nl').toLowerCase().startsWith('nl') ? 'nl' : 'en'));
+
+  // ── Navigatie ──
+  const nav = document.getElementById('nav');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const hero = document.getElementById('heroContent');
+  addEventListener('scroll', () => {
+    nav.classList.toggle('solid', scrollY > 60);
+    if (!reduce && scrollY < innerHeight) { hero.style.transform = `translateY(${scrollY * .28}px)`; hero.style.opacity = 1 - scrollY / (innerHeight * .85); }
+  }, { passive: true });
+
+  // ── Opkomen bij scrollen ──
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .14 });
+  document.querySelectorAll('.rv, .rv-x').forEach((el, i) => { el.style.transitionDelay = (i % 4) * 90 + 'ms'; io.observe(el); });
+
+  // ── Tellers ──
+  const cio = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return; cio.unobserve(e.target);
+    e.target.querySelectorAll('[data-count]').forEach(el => {
+      const to = +el.dataset.count, t0 = performance.now();
+      const tick = t => { const u = Math.min(1, (t - t0) / 1100); el.textContent = Math.round(to * (1 - Math.pow(1 - u, 3))); if (u < 1) requestAnimationFrame(tick); };
+      reduce ? el.textContent = to : requestAnimationFrame(tick);
+    });
+  }), { threshold: .4 });
+  cio.observe(document.querySelector('.stats'));
+
+  // ── Koepel volgt de muis; zonder muis zwaait hij rustig heen en weer ──
+  (function () {
+    const tank = document.getElementById('tank'), tur = document.getElementById('tur'), hull = document.getElementById('hull');
+    let aim = -60, target = -60, lastMove = 0;
+    addEventListener('pointermove', e => {
+      const r = tank.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight) return;
+      target = Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+      lastMove = performance.now();
+    });
+    const loop = t => {
+      if (t - lastMove > 2500) target = -60 + Math.sin(t / 1400) * 55;
+      let d = ((target - aim + 540) % 360) - 180;
+      aim += d * .09;
+      tur.style.setProperty('--aim', aim + 'deg');
+      requestAnimationFrame(loop);
+    };
+    if (!reduce) requestAnimationFrame(loop);
+    document.querySelectorAll('.teamsw button').forEach(b => b.onclick = () => {
+      const c = b.dataset.t;
+      document.querySelectorAll('.teamsw button').forEach(x => x.classList.toggle('on', x === b));
+      tank.classList.toggle('red', c === 'red');
+      hull.src = `media/hull_${c}.png`; tur.src = `media/turret_${c}.png`;
+    });
+  })();
+</script>
+</body>
+</html>
